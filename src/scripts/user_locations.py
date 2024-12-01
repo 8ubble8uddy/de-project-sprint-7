@@ -58,11 +58,12 @@ def input_paths(date_string: str, depth: int, basepath: str):
 
 
 def calculate_distance(lat1, lat2, lon1, lon2):
+    radius_earth = 6371.0
     distance_in_kms =(
         F.round((F.acos((F.sin(F.radians(F.col(lat1))) * F.sin(F.radians(F.col(lat2)))) + \
            ((F.cos(F.radians(F.col(lat1))) * F.cos(F.radians(F.col(lat2)))) * \
             (F.cos(F.radians(lon1) - F.radians(lon2))))
-               ) * F.lit(6371.0)), 4)
+               ) * F.lit(radius_earth)), 4)
     )
     return distance_in_kms
 
@@ -90,7 +91,7 @@ def get_city_messages(cities, messages):
         .withColumn('distance', calculate_distance('m.lat', 'c.lat', 'm.lon', 'c.lon'))
         .groupBy('m.lat', 'm.lon')
         .agg(F.min_by('c.city', 'distance').alias('city'), F.min_by('c.timezone', 'distance').alias('timezone'))
-        .join(messages, ['lat', 'lon'])
+        .join(messages, ['lat', 'lon'], 'inner')
     )
     return city_messages
 

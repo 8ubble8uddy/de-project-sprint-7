@@ -63,11 +63,12 @@ def input_paths(date_string: str, depth: int, basepath: str):
 
 
 def calculate_distance(lat1, lat2, lon1, lon2):
+    radius_earth = 6371.0
     distance_in_kms =(
         F.round((F.acos((F.sin(F.radians(F.col(lat1))) * F.sin(F.radians(F.col(lat2)))) + \
            ((F.cos(F.radians(F.col(lat1))) * F.cos(F.radians(F.col(lat2)))) * \
             (F.cos(F.radians(lon1) - F.radians(lon2))))
-               ) * F.lit(6371.0)), 4)
+               ) * F.lit(radius_earth)), 4)
     )
     return distance_in_kms
 
@@ -77,7 +78,7 @@ def get_curr_locations(users_geo, messages):
         messages
         .groupBy(F.col('event.message_from').alias('user_id'))
         .agg(F.max_by('lat', 'event.message_ts').alias('lat'), F.max_by('lon', 'event.message_ts').alias('lon'))
-        .join(users_geo, 'user_id')
+        .join(users_geo, 'user_id', 'inner')
     )
     return curr_locations
 
@@ -87,7 +88,7 @@ def get_sub_neighbors(curr_locations , subscriptions):
     sub_locals = (
         subscriptions
         .selectExpr('event.user AS user_id', 'event.subscription_channel AS channel')
-        .join(curr_locations, 'user_id')
+        .join(curr_locations, 'user_id', 'inner')
         .withColumn('channel_locals', F.collect_list(F.struct('user_id', 'lat', 'lon')).over(w))
         .selectExpr('*', 'INLINE(channel_locals) AS (sub_local, lat2, lon2)')
         .drop('channel', 'channel_locals')
